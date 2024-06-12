@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  mybank-db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: mybank
+      MYSQL_USER: mybankuser
+      MYSQL_PASSWORD: mybankpass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mybank-data:/var/lib/mysql
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  mybank-app:
+    build: .
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mybank-db
+
+volumes:
+  mybank-data:

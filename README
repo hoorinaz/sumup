@@ -1,0 +1,23 @@
+Step 1: Run Locally
+myBank/
+├── cmd/
+│   └── myBank/
+│       └── main.go
+├── internal/
+│   ├── account/
+│   │   ├── account.go
+│   │   ├── account_service.go
+│   │   └── transfer_service.go
+├── db/
+│   ├── init.go
+│   └── schema.sql
+├── go.mod
+└── go.sum
+
+go run ./cmd/myBank/main.go -action=create -owner="Alice"
+
+Step 2: Build the Project
+Build the Project: go build -o myBank ./cmd/myBank/
+Run the Built Binary: ./myBank -action=create -owner="Alice"
+
+Step 3: Test
