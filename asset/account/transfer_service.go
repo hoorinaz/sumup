@@ -27,6 +27,7 @@ func (s *TransferService) Transfer(fromAccount, toAccount *Account, amount float
 	}
 
 	_, err = tx.Exec("UPDATE accounts SET balance = balance - ? WHERE id = ?", amount, fromAccount.ID)
+	fmt.Println(fromAccount.ID, " error ", err)
 	if err != nil {
 		return err
 	}

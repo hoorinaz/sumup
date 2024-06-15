@@ -21,3 +21,7 @@ Build the Project: go build -o myBank ./cmd/myBank/
 Run the Built Binary: ./myBank -action=create -owner="Alice"
 
 Step 3: Test
+
+Using go-sqlmock package to mock database
+
+gin for api

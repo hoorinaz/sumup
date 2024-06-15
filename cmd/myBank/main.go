@@ -1,106 +1,106 @@
 package main
 
 import (
-	"SumUp_Task/asset/db"
-	"flag"
-	"fmt"
 	"log"
+	"net/http"
+	"sumup/asset/account"
+	"sumup/asset/db"
 
-	account "SumUp_Task/asset/account"
+	"github.com/gin-gonic/gin"
+	_ "github.com/go-sql-driver/mysql"
 )
 
 var (
-	action       = flag.String("action", "", "Action to perform: create, deposit, withdraw")
-	ownerName    = flag.String("owner", "", "Owner name for creating an account")
-	accountOwner = flag.String("account", "", "Account owner for deposit or withdraw")
-	amount       = flag.Float64("amount", 0, "Amount for deposit or withdraw")
+	accountService  *account.AccountService
+	transferService *account.TransferService
 )
 
 func main() {
-	// Debug: Print all command-line arguments
-	//fmt.Println("Command-line arguments:", os.Args)
-	flag.Parse()
-	if *action == "" {
-		log.Fatal("No action provided. Please specify -action=create|deposit|withdraw")
+	db, err := db.InitDB()
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+	defer db.Close()
+
+	accountService = account.NewAccountService(db)
+
+	// Setting up routes
+	r := gin.Default()
+	r.POST("/create", createAccountHandler)
+	r.POST("/deposit", depositHandler)
+	r.POST("/transfer", transferHandler)
+
+	// Starting the server
+	log.Println("Starting server on :8080")
+	log.Fatal(r.Run(":8080"))
+}
+
+func createAccountHandler(c *gin.Context) {
+	var req struct {
+		Owner string `json:"owner" binding:"required"`
 	}
 
-	dsn := "mybankuser:mybankpass@tcp(mybank-db:3306)/mybank"
-	db := db.InitDB(dsn)
-	accountService := account.NewAccountService(db)
-	transferService := account.NewTransferService(db)
-
-	accountService := account.NewAccountServiceImp()
-	transferService := account.TransferService(db)
-
-	switch *action {
-	case "create":
-		fmt.Println("create")
-		if *ownerName == "" {
-			log.Fatal("Owner name is required for creating an account")
-		}
-		newAccount := accountService.CreateAccount(*ownerName)
-		fmt.Printf("Account created: %+v\n", newAccount)
-	case "deposit":
-		fmt.Println("deposit", "owner= ", *accountOwner)
-		if *accountOwner == "" || *amount <= 0 {
-			log.Fatal("Valid account owner and amount are required for deposit")
-		}
-		acc := accountService.GetAccount(*accountOwner)
-		if acc == nil {
-			log.Fatalf("Account with name %d not found", *accountOwner)
-		}
-		accountService.Deposit(acc, *amount)
-		fmt.Printf("Deposited %f to account %d. New balance: %f\n", *amount, acc.Owner, acc.Balance)
-	case "withdraw":
-		fmt.Println("withdraw")
-		if *accountOwner == "" || *amount <= 0 {
-			log.Fatal("Valid account ID and amount are required for withdrawal")
-		}
-		account := accountService.GetAccount(*accountOwner)
-		if account == nil {
-			log.Fatalf("Account with ID %d not found", *accountOwner)
-		}
-		err := accountService.Withdraw(account, *amount)
-		if err != nil {
-			log.Fatalf("Withdrawal failed: %v", err)
-		}
-		fmt.Printf("Withdrew %.2f from account %d. New balance: %.2f\n", *amount, account.Owner, account.Balance)
-	case "transfer":
-		if *fromAccount == 0 || *toAccount == 0 || *amount <= 0 {
-			log.Fatal("Valid from account ID, to account ID, and amount are required for transfer")
-		}
-		fromAcc := accountService.GetAccount(*fromAccount)
-		toAcc := accountService.GetAccount(*toAccount)
-		if fromAcc == nil || toAcc == nil {
-			log.Fatalf("From account ID %d or to account ID %d not found", *fromAccount, *toAccount)
-		}
-		err := transferService.Transfer(fromAcc, toAcc, *amount)
-		if err != nil {
-			log.Fatalf("Transfer failed: %v", err)
-		}
-		fmt.Printf("Transferred %.2f from account %d to account %d. New balances: %.2f, %.2f\n", *amount, fromAcc.ID, toAcc.ID, fromAcc.Balance, toAcc.Balance)
-
-	default:
-		log.Fatalf("Unknown action: %s", *action)
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
 	}
-	//
-	//// create account
-	//acc1 := accountService.CreateAccount("Hoorinaz")
-	//acc2 := accountService.CreateAccount("asghar")
-	//
-	//// deposit money
-	//acc1.Deposit(230)
-	//acc2.Deposit(500)
-	//
-	//// transfer
-	//transferService := account.NewTransferImp()
-	//if err := transferService.Transfer(acc1, acc2, 30); err != nil {
-	//	fmt.Printf("Transfer failed: %v\n", err)
-	//} else {
-	//	fmt.Printf("Transfer succeeded!\n")
-	//}
-	//
-	//fmt.Printf("Account 1 balance: %f\n", acc1.Balance)
-	//fmt.Printf("Account 2 balance: %f\n", acc2.Balance)
 
+	acc := accountService.CreateAccount(req.Owner)
+	c.JSON(http.StatusOK, acc)
+}
+
+func depositHandler(c *gin.Context) {
+	var req struct {
+		AccountID int64   `json:"account_id" binding:"required"`
+		Amount    float64 `json:"amount" binding:"required,gt=0"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	acc := accountService.GetAccount(req.AccountID)
+	if acc == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Account not found"})
+		return
+	}
+
+	if err := accountService.Deposit(acc, req.Amount); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, acc)
+}
+
+func transferHandler(c *gin.Context) {
+	var req struct {
+		FromAccountID int64   `json:"from_account_id" binding:"required"`
+		ToAccountID   int64   `json:"to_account_id" binding:"required"`
+		Amount        float64 `json:"amount" binding:"required,gt=0"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		return
+	}
+
+	fromAcc := accountService.GetAccount(req.FromAccountID)
+	if fromAcc == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "From account not found"})
+		return
+	}
+
+	toAcc := accountService.GetAccount(req.ToAccountID)
+	if toAcc == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "To account not found"})
+		return
+	}
+
+	if err := transferService.Transfer(fromAcc, toAcc, req.Amount); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Transfer successful"})
 }

@@ -1,0 +1,34 @@
+version: '3.7'
+
+services:
+  mybank-db:
+    image: mysql:8.0
+    container_name: mybank-db
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: mybank
+      MYSQL_USER: myuser
+      MYSQL_PASSWORD: mypassword
+    ports:
+      - "3306:3306"
+    volumes:
+      - mybank-db-data:/var/lib/mysql
+
+  mybank-app:
+    build: ./
+    depends_on:
+      - mybank-db
+    environment:
+      DB_HOST: mybank-db
+      DB_USER: myuser
+      DB_PASSWORD: mypassword
+      DB_NAME: mybank
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: ["go", "run", "cmd/myBank/main.go"]
+    ports:
+      - "8080:8080"
+
+volumes:
+  mybank-db-data:
