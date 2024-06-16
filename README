@@ -47,6 +47,12 @@ To run the services, use the provided `make` commands:
 - **build**: Builds the application.
 - **clean**: Cleans up unnecessary files.
 
+## Request Example
+     curl -X POST http://localhost:8080/get -d '{"id": 1}' -H "Content-Type: application/json" -H "Content-Type: application/json"
+     curl -X POST http://localhost:8080/create -d '{"owner":"kasra man", "balance":500}' -H "Content-Type: application/json"
+     curl -X POST http://localhost:8080/deposit -d '{"account_id": 3, "amount": 100.00}' -H "Content-Type: application/json"
+     curl -X POST http://localhost:8080/transfer -d '{"from_account_id": 1, "to_account_id": 2, "amount": 50.00}' -H "Content-Type: application/json"
+
 ## Note
 
 When running tests, you may encounter the message 'all expectations were already fulfilled, call to database transaction Begin was not expected'. This message is informative and does not indicate a test failure if your test cases pass successfully.
