@@ -8,7 +8,7 @@ MyBank is a simple API service designed to simulate basic banking operations. Wi
 - Deposit money into an account
 - Transfer money between accounts
 
-### Data Model and Storage
+### Data Mode and Storage
 
 MyBank uses MySQL to persist account information and transaction records. The primary data model for an account is defined as follows:
 
@@ -50,10 +50,4 @@ To run the services, use the provided `make` commands:
      curl -X POST http://localhost:8080/transfer -d '{"from_account_id": 1, "to_account_id": 2, "amount": 50.00}' -H "Content-Type: application/json"
 
 ### Note
-
 When running tests, you may encounter the message 'all expectations were already fulfilled, call to database transaction Begin was not expected'. This message is informative and does not indicate a test failure if your test cases pass successfully.
-
-
-- **Installation Instructions**: Include step-by-step instructions on setting up and configuring MySQL with Docker Compose if it's not handled automatically.
-- **Examples**: Provide usage examples for each API endpoint (create account, deposit, transfer) to guide users on how to interact with the API.
-- **Deployment**: Include instructions or considerations for deploying MyBank to a production environment, such as environment variable configuration and scaling considerations.
