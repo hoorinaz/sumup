@@ -1,7 +1,3 @@
-Here's an enhanced version of your README file for the MyBank project:
-
----
-
 # MyBank
 
 ## Description
@@ -64,5 +60,3 @@ When running tests, you may encounter the message 'all expectations were already
 - **Installation Instructions**: Include step-by-step instructions on setting up and configuring MySQL with Docker Compose if it's not handled automatically.
 - **Examples**: Provide usage examples for each API endpoint (create account, deposit, transfer) to guide users on how to interact with the API.
 - **Deployment**: Include instructions or considerations for deploying MyBank to a production environment, such as environment variable configuration and scaling considerations.
-
-This revised README provides a clear overview of MyBank's functionality, data model, services, and how to get started with running and testing the application. Adjustments can be made based on specific project requirements and user needs.
