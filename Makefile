@@ -6,3 +6,9 @@ clean:
 
 test:
 	go test ./asset/... -v
+
+run:
+	docker-compose up
+
+build:
+	docker-compose build
