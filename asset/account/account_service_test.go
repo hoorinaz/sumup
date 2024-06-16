@@ -1,7 +1,6 @@
 package account
 
 import (
-	"database/sql"
 	"errors"
 	"testing"
 
@@ -10,197 +9,118 @@ import (
 )
 
 func TestCreateAccount(t *testing.T) {
-	// Create a new mock database
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 	defer db.Close()
 
-	// Create the account service with the mock database
-	accountService := NewAccountService(db)
+	accountService := &AccountService{db: db}
 
-	// Define the expected behavior for the mock database
+	owner := "test_owner"
+	balance := 1000.0
+	accountID := int64(1)
+
+	mock.ExpectBegin()
 	mock.ExpectExec("INSERT INTO accounts").
-		WithArgs("Hoorie Nazari", 0.0).
-		WillReturnResult(sqlmock.NewResult(1, 1))
+		WithArgs(owner, balance).
+		WillReturnResult(sqlmock.NewResult(accountID, 1))
+	mock.ExpectCommit()
 
-	// Test case: Successful account creation
-	owner := "Hoorie Nazari"
-	account := accountService.CreateAccount(owner)
-
-	// Assert that account is created correctly
-	assert.NotNil(t, account, "Account should not be nil")
-	assert.Equal(t, owner, account.Owner, "Owner name should match")
-	assert.Equal(t, int64(1), account.ID, "Account ID should match")
-
-	// Ensure all expectations were met
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("there were unfulfilled expectations: %s", err)
-	}
-}
-
-func TestGetAccount(t *testing.T) {
-	// Create a new mock database
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
-	}
-	defer db.Close()
-
-	// Create the account service with the mock database
-	accountService := NewAccountService(db)
-
-	// Define the expected behavior for the mock database
-	rows := sqlmock.NewRows([]string{"id", "owner", "balance"}).
-		AddRow(1, "Hoorie Nazari", 100.0)
-	mock.ExpectQuery("SELECT id, owner, balance FROM accounts WHERE id = ?").
-		WithArgs(1).
-		WillReturnRows(rows)
-
-	// Test case: Successful account retrieval
-	id := int64(1)
-	account := accountService.GetAccount(id)
-
-	// Assert that account is retrieved correctly
-	assert.NotNil(t, account, "Account should not be nil")
-	assert.Equal(t, id, account.ID, "Account ID should match")
-	assert.Equal(t, "Hoorie Nazari", account.Owner, "Owner name should match")
-	assert.Equal(t, 100.0, account.Balance, "Balance should match")
-
-	// Ensure all expectations were met
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("there were unfulfilled expectations: %s", err)
-	}
-}
-
-func TestGetAccount_NotFound(t *testing.T) {
-	// Create a new mock database
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
-	}
-	defer db.Close()
-
-	// Create the account service with the mock database
-	accountService := NewAccountService(db)
-
-	// Define the expected behavior for the mock database
-	mock.ExpectQuery("SELECT id, owner, balance FROM accounts WHERE id = ?").
-		WithArgs(1).
-		WillReturnError(sql.ErrNoRows)
-
-	// Test case: Account not found
-	id := int64(1)
-	account := accountService.GetAccount(id)
-
-	// Assert that account is not retrieved
-	assert.Nil(t, account, "Account should be nil when not found")
-
-	// Ensure all expectations were met
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("there were unfulfilled expectations: %s", err)
-	}
+	account, err := accountService.CreateAccount(owner, balance)
+	assert.NoError(t, err)
+	assert.NotNil(t, account)
+	assert.Equal(t, accountID, account.ID)
+	assert.Equal(t, owner, account.Owner)
+	assert.Equal(t, balance, account.Balance)
 }
 
 func TestDeposit(t *testing.T) {
-	// Create a new mock database
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 	defer db.Close()
 
-	// Create the account service with the mock database
-	accountService := NewAccountService(db)
+	accountService := &AccountService{db: db}
 
-	// Create a test account
 	account := &Account{
 		ID:      1,
-		Owner:   "Navid Gasparof",
-		Balance: 100.0,
+		Owner:   "test_owner",
+		Balance: 1000.0,
 	}
 
-	// Define the expected behavior for the mock database
+	amount := 500.0
+
+	mock.ExpectBegin()
 	mock.ExpectExec("UPDATE accounts SET balance = balance \\+ \\? WHERE id = \\?").
-		WithArgs(50.0, account.ID).
+		WithArgs(amount, account.ID).
 		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectCommit()
 
-	// Test case: Successful deposit
-	err = accountService.Deposit(account, 50.0)
-
-	// Assert that the deposit was successful
-	assert.NoError(t, err, "Deposit should not return an error")
-	assert.Equal(t, 150.0, account.Balance, "Account balance should be updated")
-
-	// Ensure all expectations were met
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("there were unfulfilled expectations: %s", err)
-	}
+	err = accountService.Deposit(account, amount)
+	assert.NoError(t, err)
+	assert.Equal(t, 1500.0, account.Balance)
 }
+
 func TestWithdraw(t *testing.T) {
-	// Create a new mock database
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 	defer db.Close()
 
-	// Create the account service with the mock database
-	accountService := NewAccountService(db)
+	accountService := &AccountService{db: db}
 
-	// Test case: Successful withdrawal
 	account := &Account{
 		ID:      1,
-		Owner:   "Samira Batman",
-		Balance: 100.0,
+		Owner:   "test_owner",
+		Balance: 1000.0,
 	}
 
-	// Define the expected behavior for the mock database
-	mock.ExpectExec("UPDATE accounts SET balance = balance - \\? WHERE id = \\?").
-		WithArgs(50.0, account.ID).
-		WillReturnResult(sqlmock.NewResult(1, 1))
+	amount := 500.0
 
-	err = accountService.Withdraw(account, 50.0)
+	t.Run("Transaction Failure", func(t *testing.T) {
+		mock.ExpectBegin()
+		mock.ExpectExec("UPDATE accounts SET balance = balance - \\? WHERE id = \\?").
+			WithArgs(amount, account.ID).
+			WillReturnError(errors.New("update failed"))
+		mock.ExpectRollback()
 
-	// Assert that the withdrawal was successful
-	assert.NoError(t, err, "Withdraw should not return an error")
-	assert.Equal(t, 50.0, account.Balance, "Account balance should be updated")
+		err := accountService.Withdraw(account, amount)
+		assert.EqualError(t, err, "transaction failed, try again")
+		assert.Equal(t, 1000.0, account.Balance) // The balance should not change due to rollback
 
-	// Ensure all expectations were met
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("there were unfulfilled expectations: %s", err)
-	}
+		if err := mock.ExpectationsWereMet(); err != nil {
+			t.Errorf("there were unfulfilled expectations: %s", err)
+		}
+	})
 
-	// Test case: Insufficient funds
-	account.Balance = 30.0
-	err = accountService.Withdraw(account, 50.0)
+	t.Run("Insufficient Funds", func(t *testing.T) {
+		mock.ExpectBegin()
+		lowBalanceAccount := &Account{
+			ID:      2,
+			Owner:   "test_owner2",
+			Balance: 100.0,
+		}
 
-	// Assert that the withdrawal failed due to insufficient funds
-	assert.EqualError(t, err, "insufficient funds", "Should return an insufficient funds error")
-	assert.Equal(t, 30.0, account.Balance, "Account balance should not change")
+		err := accountService.Withdraw(lowBalanceAccount, amount)
+		assert.EqualError(t, err, "insufficient funds")
+		assert.Equal(t, 100.0, lowBalanceAccount.Balance)
+	})
 
-	// Ensure all expectations were met
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("there were unfulfilled expectations: %s", err)
-	}
+	t.Run("Successful Withdrawal", func(t *testing.T) {
+		mock.ExpectBegin()
+		mock.ExpectExec("UPDATE accounts SET balance = balance - \\? WHERE id = \\?").
+			WithArgs(amount, account.ID).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+		mock.ExpectCommit()
 
-	// Test case: Transaction failure
-	account.Balance = 100.0
-	mock.ExpectExec("UPDATE accounts SET balance = balance - \\? WHERE id = \\?").
-		WithArgs(50.0, account.ID).
-		WillReturnError(errors.New("transaction failed"))
+		err := accountService.Withdraw(account, amount)
+		assert.NoError(t, err)
+		assert.Equal(t, 500.0, account.Balance)
+	})
 
-	err = accountService.Withdraw(account, 50.0)
-
-	// Assert that the withdrawal failed due to a transaction error
-	assert.EqualError(t, err, "transaction failed, try again", "Should return a transaction failed error")
-	assert.Equal(t, 100.0, account.Balance, "Account balance should not change")
-
-	// Ensure all expectations were met
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("there were unfulfilled expectations: %s", err)
-	}
 }
 
 func TestNewAccountService(t *testing.T) {

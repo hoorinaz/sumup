@@ -1,10 +1,10 @@
-# Use the official Golang image as the base image
+# Start with a Golang base image
 FROM golang:1.22
 
-# Set the Current Working Directory inside the container
-WORKDIR /sumUp
+# Set the current working directory inside the container
+WORKDIR /app
 
-# Copy go mod and sum files
+# Copy go.mod and go.sum files
 COPY go.mod go.sum ./
 
 # Download all dependencies. Dependencies will be cached if the go.mod and go.sum files are not changed
@@ -14,10 +14,10 @@ RUN go mod download
 COPY . .
 
 # Build the Go app
-RUN go build -o  ./cmd/myBank/main.go sumup
+RUN go build -o main cmd/myBank/main.go
 
 # Expose port 8080 to the outside world
 EXPOSE 8080
 
 # Command to run the executable
-CMD ["./sumup"]
+CMD ["go", "run", "cmd/mybank/main.go"]

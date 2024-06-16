@@ -1,41 +1,42 @@
 package main
 
 import (
-	"database/sql"
-	"fmt"
 	"log"
-	"os"
+	"sumup/asset/db"
 
-	_ "github.com/go-sql-driver/mysql"
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
-	// Read environment variables
-	dbHost := os.Getenv("DB_HOST")
-	dbUser := os.Getenv("DB_USER")
-	dbPassword := os.Getenv("DB_PASSWORD")
-	dbName := os.Getenv("DB_NAME")
-
-	// Check if the environment variables are set
-	if dbHost == "" || dbUser == "" || dbPassword == "" || dbName == "" {
-		log.Fatalf("One or more required environment variables are not set")
-	}
-
-	// Data Source Name (DSN) for MySQL connection
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:3306)/%s", dbUser, dbPassword, dbHost, dbName)
-
-	// Open the database connection
-	db, err := sql.Open("mysql", dsn)
+	// Initialize the database
+	db, err := db.InitDB()
 	if err != nil {
-		log.Fatalf("Error opening database: %v\n", err)
+		log.Fatalf("Failed to initialize database: %v", err)
 	}
 	defer db.Close()
 
-	// Ping the database to verify connection
-	err = db.Ping()
-	if err != nil {
-		log.Fatalf("Error connecting to the database: %v\n", err)
-	}
+	// Initialize Gin router
+	r := gin.Default()
 
-	fmt.Println("Connected to the database successfully!")
+	// Define the routes
+	r.POST("/create", createAccountHandler)
+	r.POST("/deposit", depositHandler)
+	r.POST("/transfer", transferHandler)
+
+	// Start the server
+	if err := r.Run(":8080"); err != nil {
+		log.Fatalf("Failed to run server: %v", err)
+	}
+}
+
+func createAccountHandler(c *gin.Context) {
+	// Your handler logic
+}
+
+func depositHandler(c *gin.Context) {
+	// Your handler logic
+}
+
+func transferHandler(c *gin.Context) {
+	// Your handler logic
 }

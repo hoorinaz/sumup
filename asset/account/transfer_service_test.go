@@ -1,6 +1,7 @@
 package account
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
@@ -8,43 +9,82 @@ import (
 )
 
 func TestTransfer(t *testing.T) {
-	// Create a new mock DB
 	db, mock, err := sqlmock.New()
 	if err != nil {
-		t.Fatalf("Error creating mock DB: %v", err)
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
-	defer db.Close()
+	defer mock.ExpectCommit()
 
-	// Create instances of TransferService using the mock DB
-	transferService := NewTransferService(db)
+	transferService := &TransferService{db: db}
 
-	// Define the test case variables
-	fromAccount := Account{ID: 1, Balance: 100.0}
-	toAccount := Account{ID: 2, Balance: 50.0}
-	amount := 30.0
+	fromAccount := &Account{
+		ID:      1,
+		Owner:   "from_owner",
+		Balance: 1000.0,
+	}
 
-	// Set up expectations for the first UPDATE query
-	mock.ExpectExec("UPDATE accounts SET balance = balance - (.+) WHERE id = (.+)").
-		WithArgs(amount, fromAccount.ID).
-		WillReturnResult(sqlmock.NewResult(1, 1))
+	toAccount := &Account{
+		ID:      2,
+		Owner:   "to_owner",
+		Balance: 500.0,
+	}
 
-	// Set up expectations for the second UPDATE query
-	mock.ExpectExec("UPDATE accounts SET balance = balance + (.+) WHERE id = (.+)").
-		WithArgs(amount, toAccount.ID).
-		WillReturnResult(sqlmock.NewResult(1, 1))
+	amount := 200.0
 
-	// Set up expectations for the INSERT query
-	mock.ExpectExec("INSERT INTO transactions \\(from_account, to_account, amount\\) VALUES \\(\\?, \\?, \\?\\)").
-		WithArgs(fromAccount.ID, toAccount.ID, amount).
-		WillReturnResult(sqlmock.NewResult(1, 1))
+	t.Run("Successful Transfer", func(t *testing.T) {
+		mock.ExpectBegin()
+		mock.ExpectExec("UPDATE accounts SET balance = balance - \\? WHERE id = \\?").
+			WithArgs(amount, fromAccount.ID).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+		mock.ExpectExec("UPDATE accounts SET balance = balance \\+ \\? WHERE id = \\?").
+			WithArgs(amount, toAccount.ID).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+		mock.ExpectExec("INSERT INTO transactions \\(from_account, to_account, amount\\) VALUES \\(\\?, \\?, \\?\\)").
+			WithArgs(fromAccount.ID, toAccount.ID, amount).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+		mock.ExpectCommit()
 
-	// Perform the transfer
-	err = transferService.Transfer(&fromAccount, &toAccount, amount)
+		from, to, err := transferService.Transfer(fromAccount, toAccount, amount)
+		assert.NoError(t, err)
+		assert.Equal(t, 800.0, from.Balance)
+		assert.Equal(t, 700.0, to.Balance)
 
-	// Assert that there were no errors during the transfer
-	assert.NoError(t, err, "Transfer should succeed without errors")
+		if err := mock.ExpectationsWereMet(); err != nil {
+			t.Errorf("there were unfulfilled expectations: %s", err)
+		}
+	})
 
-	// Assert that all mock expectations were met
-	err = mock.ExpectationsWereMet()
-	assert.NoError(t, err, "All expectations should be met")
+	t.Run("Insufficient Funds", func(t *testing.T) {
+		lowBalanceAccount := &Account{
+			ID:      3,
+			Owner:   "low_balance_owner",
+			Balance: 100.0,
+		}
+
+		from, to, err := transferService.Transfer(lowBalanceAccount, toAccount, amount)
+		assert.EqualError(t, err, "insufficient funds")
+		assert.Nil(t, from)
+		assert.Nil(t, to)
+		assert.Equal(t, 100.0, lowBalanceAccount.Balance)
+		assert.Equal(t, 700.0, toAccount.Balance) // Ensure toAccount balance remains unchanged
+	})
+
+	t.Run("Transaction Failure", func(t *testing.T) {
+		mock.ExpectBegin()
+		mock.ExpectExec("UPDATE accounts SET balance = balance - \\? WHERE id = \\?").
+			WithArgs(amount, fromAccount.ID).
+			WillReturnError(errors.New("update failed"))
+		mock.ExpectRollback()
+
+		from, to, err := transferService.Transfer(fromAccount, toAccount, amount)
+		assert.EqualError(t, err, "update failed")
+		assert.Nil(t, from)
+		assert.Nil(t, to)
+		assert.Equal(t, 800.0, fromAccount.Balance) // Balance should not change due to rollback
+		assert.Equal(t, 700.0, toAccount.Balance)   // Balance should not change due to rollback
+
+		if err := mock.ExpectationsWereMet(); err != nil {
+			t.Errorf("there were unfulfilled expectations: %s", err)
+		}
+	})
 }

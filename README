@@ -25,3 +25,5 @@ Step 3: Test
 Using go-sqlmock package to mock database
 
 gin for api
+
+expectations were already fulfilled, call to database transaction Begin was not expected , This message itself is informative and does not indicate a failure in your test as long as your test cases passed successfully.

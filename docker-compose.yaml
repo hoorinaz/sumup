@@ -1,5 +1,3 @@
-version: '3.7'
-
 services:
   mybank-db:
     image: mysql:8.0

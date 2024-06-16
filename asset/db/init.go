@@ -2,9 +2,12 @@ package db
 
 import (
 	"database/sql"
-	_ "github.com/go-sql-driver/mysql"
+	"fmt"
 	"log"
 	"os"
+	"time"
+
+	_ "github.com/go-sql-driver/mysql"
 )
 
 // SQL query to create accounts table if it doesn't exist
@@ -34,20 +37,32 @@ func InitDB() (*sql.DB, error) {
 	dbName := os.Getenv("DB_NAME")
 	dsn := dbUser + ":" + dbPassword + "@tcp(" + dbHost + ")/" + dbName
 
-	db, err := sql.Open("mysql", dsn)
+	var db *sql.DB
+	var err error
+
+	// Retry mechanism
+	maxAttempts := 10
+	for attempts := 1; attempts <= maxAttempts; attempts++ {
+		db, err = sql.Open("mysql", dsn)
+		if err == nil && db.Ping() == nil {
+			break
+		}
+		log.Printf("Failed to connect to database. Attempt %d/%d. Retrying in 5 seconds...", attempts, maxAttempts)
+		time.Sleep(5 * time.Second)
+	}
+
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		return nil, fmt.Errorf("failed to connect to database after %d attempts: %w", maxAttempts, err)
 	}
-	if err := db.Ping(); err != nil {
-		log.Fatal(err)
-	}
+
 	// Execute the queries
 	if _, err := db.Exec(createAccountsTableQuery); err != nil {
-		log.Fatalf("Failed to create accounts table: %v", err)
+		return nil, fmt.Errorf("failed to create accounts table: %w", err)
 	}
 
 	if _, err := db.Exec(createTransactionsTableQuery); err != nil {
-		log.Fatalf("Failed to create transactions table: %v", err)
+		return nil, fmt.Errorf("failed to create transactions table: %w", err)
 	}
+
 	return db, nil
 }
