@@ -1,62 +1,59 @@
-# MyBank
-
-## Description
-
+MyBank
+Description
 MyBank is a simple API service designed to simulate basic banking operations. With this API, users can perform the following actions:
 
-- Create a new bank account
-- Deposit money into an account
-- Transfer money between accounts
-
-## Data Model and Storage
-
+Create a new bank account
+Deposit money into an account
+Transfer money between accounts
+Data Model and Storage
 MyBank uses MySQL to persist account information and transaction records. The primary data model for an account is defined as follows:
 
-```go
+go
+Copy code
 type Account struct {
     ID      int64
     Owner   string
     Balance float64
 }
-```
-
-## Services
-
+Services
 MyBank provides two main services:
 
-- **Account Service**: Manages operations related to account creation and balance management.
-- **Transfer Service**: Handles transferring funds between accounts.
-
-## Prerequisites
-
+Account Service: Manages operations related to account creation and balance management.
+Transfer Service: Handles transferring funds between accounts.
+Prerequisites
 Before running MyBank, ensure you have the following installed:
 
-- Docker Desktop
-- `make` command (for Unix/Linux environments)
+Docker Desktop
+make command (for Unix/Linux environments)
+Getting Started
+To run the services, use the provided make commands:
 
-## Getting Started
+run-all-services: Starts the application with Docker Compose.
+test: Runs unit tests for the application.
+build: Builds the application.
+clean: Cleans up unnecessary files.
+Request Examples
+Here are some examples of how to interact with the API using curl:
 
-To run the services, use the provided `make` commands:
+Get account details:
 
-- **run-all-services**: Starts the application with Docker Compose.
-- **test**: Runs unit tests for the application.
-- **build**: Builds the application.
-- **clean**: Cleans up unnecessary files.
+bash
+Copy code
+curl -X POST http://localhost:8080/get -d '{"id": 1}' -H "Content-Type: application/json"
+Create a new account:
 
-## Request Example
-     curl -X POST http://localhost:8080/get -d '{"id": 1}' -H "Content-Type: application/json" -H "Content-Type: application/json"
-     curl -X POST http://localhost:8080/create -d '{"owner":"kasra man", "balance":500}' -H "Content-Type: application/json"
-     curl -X POST http://localhost:8080/deposit -d '{"account_id": 3, "amount": 100.00}' -H "Content-Type: application/json"
-     curl -X POST http://localhost:8080/transfer -d '{"from_account_id": 1, "to_account_id": 2, "amount": 50.00}' -H "Content-Type: application/json"
+bash
+Copy code
+curl -X POST http://localhost:8080/create -d '{"owner":"kasra man", "balance":500}' -H "Content-Type: application/json"
+Deposit money into an account:
 
-## Note
+bash
+Copy code
+curl -X POST http://localhost:8080/deposit -d '{"account_id": 3, "amount": 100.00}' -H "Content-Type: application/json"
+Transfer money between accounts:
 
+bash
+Copy code
+curl -X POST http://localhost:8080/transfer -d '{"from_account_id": 1, "to_account_id": 2, "amount": 50.00}' -H "Content-Type: application/json"
+Note
 When running tests, you may encounter the message 'all expectations were already fulfilled, call to database transaction Begin was not expected'. This message is informative and does not indicate a test failure if your test cases pass successfully.
-
----
-
-### Additional Tips for Improvement:
-
-- **Installation Instructions**: Include step-by-step instructions on setting up and configuring MySQL with Docker Compose if it's not handled automatically.
-- **Examples**: Provide usage examples for each API endpoint (create account, deposit, transfer) to guide users on how to interact with the API.
-- **Deployment**: Include instructions or considerations for deploying MyBank to a production environment, such as environment variable configuration and scaling considerations.
